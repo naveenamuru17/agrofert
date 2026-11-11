@@ -1,0 +1,1110 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#123d2b">
+<title>AgroWeather AI | Smart Crop Alerts</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+<style>
+:root {
+  --green:#176b45;
+  --deep:#123d2b;
+  --mint:#e9f6ee;
+  --bg:#f4f8f5;
+  --card:#fff;
+  --text:#193328;
+  --muted:#64766d;
+  --line:#e1ebe4;
+  --red:#c0392b;
+  --amber:#a96300;
+  --blue:#2368a2;
+  --shadow:0 8px 28px rgba(20,65,43,.08);
+}
+* { box-sizing:border-box; }
+body {
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial,Helvetica,sans-serif;
+}
+header {
+  background:linear-gradient(120deg,var(--deep),#238153);
+  color:white;
+  padding:22px max(18px,calc((100% - 1200px)/2));
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+  flex-wrap:wrap;
+}
+header h1 { margin:0; font-size:25px; }
+header p { margin:6px 0 0; color:#d9eee1; font-size:13px; }
+.wrap { max-width:1200px; margin:auto; padding:20px; }
+.toolbar,.row {
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.toolbar { justify-content:space-between; margin-bottom:16px; }
+.status { font-size:12px; color:var(--muted); }
+button,select,input { font:inherit; }
+button {
+  border:0;
+  border-radius:10px;
+  padding:11px 15px;
+  background:var(--green);
+  color:#fff;
+  font-weight:700;
+  cursor:pointer;
+}
+button:hover { filter:brightness(.94); }
+button.secondary { background:#e7f2eb; color:var(--deep); }
+button.danger { background:#a93226; }
+.grid {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+}
+.card {
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:16px;
+  box-shadow:var(--shadow);
+  min-width:0;
+}
+.card h2,.card h3 { margin:0 0 12px; }
+.card h2 { font-size:17px; }
+.card h3 { font-size:14px; }
+.metric { font-size:27px; font-weight:800; margin:7px 0; }
+.muted { color:var(--muted); font-size:13px; }
+.label { font-size:12px; color:var(--muted); }
+.wide { grid-column:span 2; }
+.full { grid-column:1/-1; }
+.section { margin:22px 0 10px; font-size:19px; }
+.formgrid {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+}
+.field label {
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  margin:0 0 6px;
+}
+.field input,.field select,.chat-input {
+  width:100%;
+  padding:11px;
+  border:1px solid #cedbd1;
+  border-radius:9px;
+  background:white;
+  color:var(--text);
+}
+.field input:focus,.field select:focus {
+  outline:2px solid #9ad0ae;
+}
+.forecast {
+  display:grid;
+  grid-template-columns:repeat(7,minmax(90px,1fr));
+  gap:9px;
+  overflow-x:auto;
+}
+.day {
+  background:#f7fbf8;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:12px;
+  text-align:center;
+}
+.day .emoji { font-size:25px; margin:7px; }
+.riskbar {
+  height:10px;
+  background:#edf1ee;
+  border-radius:20px;
+  overflow:hidden;
+  margin:10px 0;
+}
+.riskbar span {
+  display:block;
+  height:100%;
+  border-radius:20px;
+  background:#d99a26;
+}
+.risk-low { color:#167245; }
+.risk-medium { color:#a96300; }
+.risk-high { color:#bd3327; }
+.alert {
+  padding:12px;
+  border-radius:10px;
+  margin:8px 0;
+  background:#fff5e5;
+  border-left:4px solid #d99520;
+  font-size:13px;
+}
+.alert.high { background:#fff0ee; border-color:#c0392b; }
+.alert.info { background:#edf6ff; border-color:#3982bd; }
+.pill {
+  display:inline-block;
+  padding:5px 9px;
+  border-radius:30px;
+  font-size:11px;
+  font-weight:bold;
+  background:#eaf4ed;
+  color:#176b45;
+}
+.actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+#map {
+  height:300px;
+  border-radius:12px;
+  background:#e8f0eb;
+  z-index:1;
+}
+.chatbox {
+  height:230px;
+  overflow:auto;
+  background:#f7faf8;
+  border:1px solid var(--line);
+  border-radius:12px;
+  padding:10px;
+}
+.msg {
+  padding:9px 11px;
+  border-radius:12px;
+  margin:7px 0;
+  max-width:90%;
+  font-size:13px;
+  line-height:1.45;
+  white-space:pre-wrap;
+}
+.bot { background:#e8f3eb; }
+.user { background:#dcecff; margin-left:auto; }
+.chatrow { display:flex; gap:8px; margin-top:9px; }
+.chatrow input { flex:1; min-width:0; }
+.small {
+  font-size:11px;
+  color:var(--muted);
+  line-height:1.5;
+}
+.hidden { display:none!important; }
+.footer {
+  text-align:center;
+  padding:25px;
+  color:var(--muted);
+  font-size:12px;
+}
+.badge {
+  font-size:11px;
+  padding:5px 8px;
+  border-radius:20px;
+  background:#eef3ef;
+}
+.notice {
+  padding:10px 12px;
+  background:#edf6ff;
+  border-radius:10px;
+  font-size:12px;
+  color:#24577e;
+  margin:12px 0;
+}
+@media(max-width:850px) {
+  .grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .formgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .wide { grid-column:span 2; }
+}
+@media(max-width:520px) {
+  .wrap { padding:13px; }
+  .grid { grid-template-columns:1fr; }
+  .wide,.full { grid-column:span 1; }
+  .formgrid { grid-template-columns:1fr 1fr; }
+  header { padding:18px; }
+  .forecast { grid-template-columns:repeat(7,100px); }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div>
+    <h1>🌦️ AgroWeather AI</h1>
+    <p>Intelligent weather alerts and crop protection assistant</p>
+  </div>
+  <div class="row">
+    <span id="connection" class="badge">Checking connection…</span>
+    <button class="secondary" onclick="refreshWeather()">↻ Refresh weather</button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="toolbar">
+    <div>
+      <strong id="placeTitle">Your farm weather</strong>
+      <div class="status" id="updated">Weather data not loaded yet</div>
+    </div>
+    <div class="row">
+      <button class="secondary" onclick="getMyLocation()">Use my location</button>
+      <button onclick="enableNotifications()">Enable alerts</button>
+    </div>
+  </div>
+
+  <section class="card full">
+    <h2>🌱 Farm profile</h2>
+    <div class="formgrid">
+      <div class="field">
+        <label for="location">Village / city</label>
+        <input id="location" value="Chennai" placeholder="Enter city or village">
+      </div>
+      <div class="field">
+        <label for="crop">Crop</label>
+        <select id="crop">
+          <option value="rice">Rice / Paddy</option>
+          <option value="wheat">Wheat</option>
+          <option value="maize">Maize</option>
+          <option value="cotton">Cotton</option>
+          <option value="tomato">Tomato</option>
+          <option value="groundnut">Groundnut</option>
+          <option value="sugarcane">Sugarcane</option>
+          <option value="banana">Banana</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="stage">Growth stage</label>
+        <select id="stage">
+          <option value="seedling">Seedling</option>
+          <option value="vegetative" selected>Vegetative</option>
+          <option value="flowering">Flowering</option>
+          <option value="maturity">Maturity / Harvest</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="moisture">Soil moisture (%) (optional)</label>
+        <input id="moisture" type="number" min="0" max="100" placeholder="e.g. 35">
+      </div>
+    </div>
+    <div class="actions">
+      <button onclick="refreshWeather()">Analyze my farm</button>
+      <button class="secondary" onclick="saveProfile()">Save farm profile</button>
+    </div>
+    <p class="small">
+      Location search uses Open-Meteo geocoding. You can also use your device location.
+      Coordinates are used only to request weather and display your farm marker.
+    </p>
+  </section>
+
+  <h2 class="section">Live weather overview</h2>
+  <section class="grid">
+    <div class="card">
+      <div class="label">Temperature</div>
+      <div class="metric" id="temp">--°C</div>
+      <div class="muted" id="feels">Feels like --</div>
+    </div>
+    <div class="card">
+      <div class="label">Relative humidity</div>
+      <div class="metric" id="humidity">--%</div>
+      <div class="muted">Current conditions</div>
+    </div>
+    <div class="card">
+      <div class="label">Rainfall</div>
+      <div class="metric" id="rain">-- mm</div>
+      <div class="muted">Current / recent hour</div>
+    </div>
+    <div class="card">
+      <div class="label">Wind speed</div>
+      <div class="metric" id="wind">-- km/h</div>
+      <div class="muted" id="condition">Weather condition: --</div>
+    </div>
+  </section>
+
+  <h2 class="section">🧠 AI crop risk prediction</h2>
+  <section class="grid">
+    <div class="card wide">
+      <div class="row" style="justify-content:space-between">
+        <h2>Overall weather risk</h2>
+        <span class="pill" id="riskLevel">Waiting for data</span>
+      </div>
+      <div class="metric" id="riskScore">-- / 100</div>
+      <div class="riskbar"><span id="riskFill" style="width:0%"></span></div>
+      <div class="muted" id="riskSummary">Load weather data to calculate your crop risk.</div>
+    </div>
+
+    <div class="card wide">
+      <h2>Estimated crop damage category</h2>
+      <div class="metric" id="damage">Not assessed</div>
+      <div class="muted" id="damageText">
+        This is a screening estimate, not a measured yield-loss prediction.
+      </div>
+    </div>
+
+    <div class="card full">
+      <h2>Risk factors and AI recommendations</h2>
+      <div id="riskDetails">
+        <div class="muted">Your risk analysis will appear here.</div>
+      </div>
+    </div>
+  </section>
+
+  <h2 class="section">📅 7-day weather forecast</h2>
+  <section class="card full">
+    <div class="forecast" id="forecast">
+      <div class="muted">Forecast will appear after loading weather.</div>
+    </div>
+  </section>
+
+  <h2 class="section">🚨 Emergency crop alerts</h2>
+  <section class="card full">
+    <div id="alerts">
+      <div class="muted">No alerts yet. Load weather data to check risks.</div>
+    </div>
+  </section>
+
+  <h2 class="section">🗺️ Farm location map</h2>
+  <section class="card full">
+    <div id="map"></div>
+    <div class="actions">
+      <button class="secondary" onclick="getMyLocation()">Locate my farm</button>
+      <button class="secondary" onclick="openMap()">Open map directions</button>
+    </div>
+    <p class="small">Map tiles require internet. If the map does not load, the coordinates and weather functions can still work.</p>
+    <div class="muted" id="coords">Farm coordinates: not set</div>
+  </section>
+
+  <h2 class="section">🤖 AI Krishi chatbot</h2>
+  <section class="card full">
+    <div class="chatbox" id="chatbox">
+      <div class="msg bot">
+        வணக்கம்! I am AgroWeather AI. Ask me about rain, irrigation, heat, crop risks or today's weather.
+        (வணக்கம்! விவசாய வானிலை உதவியாளர்.)
+      </div>
+    </div>
+    <div class="chatrow">
+      <input id="chatInput" class="chat-input"
+        placeholder="Ask: Should I irrigate my rice crop today?"
+        onkeydown="if(event.key==='Enter')sendChat()">
+      <button onclick="sendChat()">Send</button>
+      <button class="secondary" onclick="speakLast()">🔊</button>
+    </div>
+    <div class="actions">
+      <button class="secondary" onclick="quickQuestion('Will rain affect my crop?')">Rain advice</button>
+      <button class="secondary" onclick="quickQuestion('Should I irrigate today?')">Irrigation advice</button>
+      <button class="secondary" onclick="quickQuestion('Explain my crop risk')">Explain risk</button>
+    </div>
+    <p class="small">The built-in chatbot uses the current forecast and transparent rules. It is not a cloud-based generative AI model.</p>
+  </section>
+
+  <h2 class="section">🗣️ Tamil / English voice alerts</h2>
+  <section class="card full">
+    <div class="row">
+      <div class="field" style="min-width:180px">
+        <label for="voiceLang">Voice language</label>
+        <select id="voiceLang">
+          <option value="ta-IN">தமிழ் (Tamil)</option>
+          <option value="en-IN">English</option>
+        </select>
+      </div>
+      <button onclick="speakAlerts()">Read alerts aloud</button>
+      <button class="secondary" onclick="stopSpeech()">Stop voice</button>
+    </div>
+    <p class="small">Voice availability depends on the browser and installed device voices. Android Chrome generally supports speech synthesis when a suitable voice is available.</p>
+  </section>
+
+  <h2 class="section">📴 Offline support and saved data</h2>
+  <section class="card full">
+    <div class="row">
+      <span class="pill" id="offlineState">Checking status</span>
+      <button class="secondary" onclick="showSavedData()">View saved forecast</button>
+      <button class="secondary" onclick="exportReport()">Download farm report</button>
+    </div>
+    <div id="savedInfo" class="notice">
+      The latest successful forecast is saved in this browser. When offline, the app can display saved information; fresh forecasts, online maps and geocoding require internet.
+    </div>
+    <p class="small">Single-file limitation: browsers do not allow a reliable service worker to be installed directly from a local file. For full offline app-shell caching after hosting on HTTPS, add a separate service-worker file.</p>
+  </section>
+
+  <div class="footer">
+    AgroWeather AI • Educational prototype • Verify critical farm decisions with local agricultural experts and official advisories.
+  </div>
+
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<script>
+"use strict";
+
+const $ = id => document.getElementById(id);
+const STORE_KEY = "agroweather_ai_last_v1";
+
+let weatherData = null;
+let farmLat = null;
+let farmLon = null;
+let map = null;
+let marker = null;
+let lastBotText = "";
+let currentAlerts = [];
+
+const cropInfo = {
+  rice: {
+    name:"Rice / Paddy",
+    heat:36,cold:15,wet:80,dry:8,humidity:85,
+    advice:"Maintain suitable field water levels, ensure drainage during excessive rain, and monitor leaf and sheath diseases in humid weather."
+  },
+  wheat: {
+    name:"Wheat",
+    heat:32,cold:3,wet:55,dry:5,humidity:80,
+    advice:"Avoid waterlogging, monitor rust and fungal disease conditions, and irrigate according to soil moisture and growth stage."
+  },
+  maize: {
+    name:"Maize",
+    heat:35,cold:10,wet:65,dry:5,humidity:85,
+    advice:"Protect against water stress around flowering and grain filling. Ensure drainage after heavy rainfall."
+  },
+  cotton: {
+    name:"Cotton",
+    heat:38,cold:12,wet:70,dry:5,humidity:85,
+    advice:"Avoid prolonged waterlogging and monitor pest pressure. Do not spray during strong winds or imminent rain."
+  },
+  tomato: {
+    name:"Tomato",
+    heat:35,cold:10,wet:55,dry:5,humidity:80,
+    advice:"Avoid wet foliage for long periods, provide drainage, and monitor fungal and bacterial disease symptoms."
+  },
+  groundnut: {
+    name:"Groundnut",
+    heat:36,cold:12,wet:60,dry:5,humidity:85,
+    advice:"Avoid waterlogging, maintain suitable moisture during pegging and pod development, and monitor leaf diseases."
+  },
+  sugarcane: {
+    name:"Sugarcane",
+    heat:38,cold:10,wet:90,dry:5,humidity:90,
+    advice:"Maintain moisture during active growth and provide drainage during heavy rainfall."
+  },
+  banana: {
+    name:"Banana",
+    heat:38,cold:12,wet:85,dry:5,humidity:90,
+    advice:"Support plants against strong winds, maintain drainage and moisture, and monitor leaf diseases in humid conditions."
+  }
+};
+
+function setConnection() {
+  const online = navigator.onLine;
+  $("connection").textContent = online ? "● Online" : "● Offline";
+  $("connection").style.background = online ? "#e5f5e9" : "#fff0ee";
+  $("offlineState").textContent = online ? "Internet available" : "Offline mode";
+  $("offlineState").style.color = online ? "#176b45" : "#b33227";
+}
+
+window.addEventListener("online",setConnection);
+window.addEventListener("offline",setConnection);
+setConnection();
+
+function saveProfile() {
+  const p = {
+    location:$("location").value,
+    crop:$("crop").value,
+    stage:$("stage").value,
+    moisture:$("moisture").value
+  };
+  localStorage.setItem("agroweather_ai_profile",JSON.stringify(p));
+  alert("Farm profile saved on this device.");
+}
+
+function loadProfile() {
+  try {
+    const p = JSON.parse(localStorage.getItem("agroweather_ai_profile") || "{}");
+    if(p.location) $("location").value=p.location;
+    if(p.crop) $("crop").value=p.crop;
+    if(p.stage) $("stage").value=p.stage;
+    if(p.moisture) $("moisture").value=p.moisture;
+  } catch(e) {}
+}
+
+async function geocode(name) {
+  const url = "https://geocoding-api.open-meteo.com/v1/search?name="
+    + encodeURIComponent(name)
+    + "&count=1&language=en&format=json";
+
+  const r = await fetch(url);
+
+  if(!r.ok) throw new Error("Could not search this location.");
+
+  const j = await r.json();
+
+  if(!j.results || !j.results.length) {
+    throw new Error("Location not found. Try a nearby town or district.");
+  }
+
+  return j.results[0];
+}
+
+async function getWeather(lat,lon) {
+  const params = new URLSearchParams({
+    latitude:lat,
+    longitude:lon,
+    current:"temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code",
+    daily:"weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max",
+    timezone:"auto",
+    forecast_days:"7"
+  });
+
+  const r = await fetch("https://api.open-meteo.com/v1/forecast?" + params);
+
+  if(!r.ok) throw new Error("Weather service returned an error.");
+
+  return await r.json();
+}
+
+async function refreshWeather() {
+  if(!navigator.onLine) {
+    showSavedData();
+    alert("You are offline. Showing the last saved forecast, if available.");
+    return;
+  }
+
+  try {
+    $("updated").textContent="Finding location and loading forecast…";
+
+    let place,lat,lon;
+
+    if(farmLat !== null && farmLon !== null) {
+      lat=farmLat;
+      lon=farmLon;
+      place={
+        name:$("location").value || "Selected farm",
+        admin1:"",
+        country:""
+      };
+    } else {
+      place=await geocode($("location").value.trim());
+      lat=place.latitude;
+      lon=place.longitude;
+      farmLat=lat;
+      farmLon=lon;
+    }
+
+    const data=await getWeather(lat,lon);
+    weatherData=data;
+
+    const label=[place.name,place.admin1,place.country].filter(Boolean).join(", ");
+
+    $("placeTitle").textContent="🌾 "+label;
+    $("updated").textContent="Updated: "+new Date().toLocaleString()
+      +" • Forecast timezone: "+(data.timezone || "local");
+
+    renderWeather(data);
+    renderForecast(data);
+    analyzeRisk(data);
+    renderMap(lat,lon,label);
+
+    const saved={
+      data,
+      place:{
+        name:place.name,
+        admin1:place.admin1,
+        country:place.country
+      },
+      lat,lon,
+      profile:{
+        crop:$("crop").value,
+        stage:$("stage").value,
+        moisture:$("moisture").value
+      },
+      savedAt:new Date().toISOString()
+    };
+
+    localStorage.setItem(STORE_KEY,JSON.stringify(saved));
+
+    $("savedInfo").textContent="Latest forecast saved on this device at "
+      +new Date().toLocaleString()+".";
+
+  } catch(err) {
+    $("updated").textContent="Could not update: "+err.message;
+    showSavedData();
+    alert(err.message);
+  }
+}
+
+function weatherText(code) {
+  const m={
+    0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",
+    45:"Fog",48:"Rime fog",51:"Light drizzle",53:"Drizzle",
+    55:"Dense drizzle",61:"Light rain",63:"Moderate rain",
+    65:"Heavy rain",71:"Light snow",73:"Snow",75:"Heavy snow",
+    80:"Rain showers",81:"Moderate showers",82:"Violent showers",
+    95:"Thunderstorm",96:"Thunderstorm with hail",
+    99:"Severe thunderstorm"
+  };
+  return m[code] || "Variable conditions";
+}
+
+function weatherEmoji(code) {
+  if([0,1].includes(code)) return "☀️";
+  if([2,3,45,48].includes(code)) return "☁️";
+  if([51,53,55,61,63,65,80,81,82].includes(code)) return "🌧️";
+  if(code>=95) return "⛈️";
+  return "🌤️";
+}
+
+function renderWeather(d) {
+  const c=d.current;
+
+  $("temp").textContent=Math.round(c.temperature_2m)+"°C";
+  $("feels").textContent="Feels like "+Math.round(c.apparent_temperature)+"°C";
+  $("humidity").textContent=c.relative_humidity_2m+"%";
+  $("rain").textContent=Number(c.precipitation).toFixed(1)+" mm";
+  $("wind").textContent=Number(c.wind_speed_10m).toFixed(1)+" km/h";
+  $("condition").textContent=weatherText(c.weather_code);
+}
+
+function renderForecast(d) {
+  const a=d.daily;
+
+  $("forecast").innerHTML=a.time.map((day,i)=>`
+    <div class="day">
+      <strong>${new Date(day+"T12:00:00").toLocaleDateString(undefined,{weekday:"short"})}</strong>
+      <div class="emoji">${weatherEmoji(a.weather_code[i])}</div>
+      <div><b>${Math.round(a.temperature_2m_max[i])}°</b> / ${Math.round(a.temperature_2m_min[i])}°</div>
+      <div class="muted">🌧 ${a.precipitation_probability_max[i]??0}%</div>
+      <div class="muted">${Number(a.precipitation_sum[i]||0).toFixed(1)} mm</div>
+    </div>
+  `).join("");
+}
+
+function analyzeRisk(d) {
+  const c=d.current;
+  const day=d.daily;
+  const crop=cropInfo[$("crop").value];
+  const stage=$("stage").value;
+  const moisture=parseFloat($("moisture").value);
+
+  let factors=[],score=0;
+
+  const maxRain=Math.max(...day.precipitation_sum.slice(0,3).map(Number));
+  const maxProb=Math.max(...day.precipitation_probability_max.slice(0,3).map(Number));
+  const maxWind=Math.max(...day.wind_speed_10m_max.slice(0,3).map(Number));
+  const maxTemp=Math.max(...day.temperature_2m_max.slice(0,3).map(Number));
+  const minTemp=Math.min(...day.temperature_2m_min.slice(0,3).map(Number));
+
+  const heatLimit=crop.heat-(stage==="flowering"?2:0);
+
+  if(maxTemp>=heatLimit) {
+    let s=maxTemp>=heatLimit+5?30:20;
+    score+=s;
+    factors.push({
+      s,
+      title:"Heat stress risk",
+      detail:"Forecast maximum "+maxTemp+"°C is near or above the screening threshold for "+crop.name+". Check soil moisture and irrigate appropriately."
+    });
+  }
+
+  if(maxRain>=crop.wet || maxProb>=85) {
+    let s=maxRain>=crop.wet*1.5?30:20;
+    score+=s;
+    factors.push({
+      s,
+      title:"Heavy rainfall / waterlogging risk",
+      detail:"Rain forecast in the next three days: up to "+maxRain.toFixed(1)+" mm; maximum rain probability "+maxProb+"%. Check field drainage."
+    });
+  }
+
+  if(c.relative_humidity_2m>=crop.humidity) {
+    score+=18;
+    factors.push({
+      s:18,
+      title:"High humidity – disease-conducive weather",
+      detail:"Humidity is "+c.relative_humidity_2m+"%. This can favor some fungal diseases; inspect plants and follow local crop advisories."
+    });
+  }
+
+  if(maxWind>=40) {
+    score+=20;
+    factors.push({
+      s:20,
+      title:"Strong wind risk",
+      detail:"Forecast wind may reach "+maxWind+" km/h. Secure supports and avoid pesticide spraying in unsafe wind."
+    });
+  }
+
+  if(minTemp<=crop.cold) {
+    score+=15;
+    factors.push({
+      s:15,
+      title:"Low temperature risk",
+      detail:"Forecast minimum "+minTemp+"°C may stress this crop depending on variety and growth stage."
+    });
+  }
+
+  if(!Number.isNaN(moisture)) {
+    if(moisture<20) {
+      score+=18;
+      factors.push({
+        s:18,
+        title:"Low soil moisture",
+        detail:"Entered soil moisture is "+moisture+"%. Check the sensor calibration and crop water needs; irrigation may be needed."
+      });
+    } else if(moisture>85) {
+      score+=12;
+      factors.push({
+        s:12,
+        title:"Very high soil moisture",
+        detail:"Entered soil moisture is "+moisture+"%. Check drainage and avoid adding water until verified."
+      });
+    }
+  }
+
+  score=Math.min(100,score);
+
+  if(stage==="flowering" && score>0) {
+    score=Math.min(100,score+5);
+  }
+
+  const level=score>=60?"HIGH":score>=30?"MEDIUM":"LOW";
+  const cls=score>=60?"risk-high":score>=30?"risk-medium":"risk-low";
+
+  $("riskScore").textContent=score+" / 100";
+  $("riskLevel").textContent=level+" RISK";
+  $("riskLevel").className="pill "+cls;
+  $("riskFill").style.width=score+"%";
+  $("riskFill").style.background=score>=60?"#c0392b":score>=30?"#d99520":"#23945b";
+
+  $("riskSummary").textContent=score===0
+    ?"No major weather risk detected by this screening model. Continue routine field monitoring."
+    :factors.length+" weather or field factor(s) contributed to the score. Highest priority: "+factors[0].title+".";
+
+  let damage=score>=75?"Potentially severe":score>=50?"Moderate potential":score>=25?"Low potential":"Minimal indicated risk";
+
+  $("damage").textContent=damage;
+  $("damageText").textContent="Screening category based on forecast risk score ("+score+"/100). It is not a percentage of crop loss and is not a validated yield-loss model.";
+
+  $("riskDetails").innerHTML=factors.length
+    ?factors.map(f=>`<div class="alert ${f.s>=25?"high":""}"><b>${escapeHTML(f.title)}</b><br>${escapeHTML(f.detail)}</div>`).join("")
+    :`<div class="alert info">No significant risk trigger was detected. Continue monitoring local field conditions.</div>`;
+
+  currentAlerts=[];
+
+  if(maxRain>=50 || maxProb>=85) {
+    currentAlerts.push({
+      level:"high",
+      title:"Heavy rain watch",
+      text:"Heavy rainfall may occur in the next 3 days. Clear drainage channels and follow official local warnings."
+    });
+  }
+
+  if(maxTemp>=crop.heat) {
+    currentAlerts.push({
+      level:"high",
+      title:"Heat stress warning",
+      text:"High temperatures are forecast. Check soil moisture and irrigate according to crop needs."
+    });
+  }
+
+  if(maxWind>=40) {
+    currentAlerts.push({
+      level:"high",
+      title:"Strong wind warning",
+      text:"Strong winds are possible. Secure vulnerable plants and structures; avoid spraying."
+    });
+  }
+
+  if(c.relative_humidity_2m>=crop.humidity) {
+    currentAlerts.push({
+      level:"",
+      title:"High humidity advisory",
+      text:"Inspect crops for disease symptoms. Weather alone cannot confirm infection."
+    });
+  }
+
+  if(!currentAlerts.length) {
+    currentAlerts.push({
+      level:"",
+      title:"No major alert",
+      text:"No high-priority trigger detected by the current screening rules."
+    });
+  }
+
+  $("alerts").innerHTML=currentAlerts.map(a=>
+    `<div class="alert ${a.level}"><b>${escapeHTML(a.title)}</b><br>${escapeHTML(a.text)}</div>`
+  ).join("");
+
+  if(currentAlerts.some(a=>a.level==="high")) {
+    notifyUser("AgroWeather AI: "+currentAlerts.filter(a=>a.level==="high").map(a=>a.title).join(", "));
+  }
+}
+
+function notifyUser(message) {
+  if("Notification" in window && Notification.permission==="granted") {
+    try {
+      new Notification("AgroWeather AI",{body:message});
+    } catch(e) {}
+  }
+}
+
+async function enableNotifications() {
+  if(!("Notification" in window)) {
+    alert("This browser does not support notifications.");
+    return;
+  }
+
+  const p=await Notification.requestPermission();
+
+  alert(p==="granted"?"Alerts enabled.":"Notification permission was not granted.");
+}
+
+function renderMap(lat,lon,label) {
+  $("coords").textContent="Farm coordinates: "+lat.toFixed(5)+", "+lon.toFixed(5);
+
+  if(!window.L) {
+    $("map").innerHTML="Map library unavailable. Coordinates are still available above.";
+    return;
+  }
+
+  if(!map) {
+    map=L.map("map").setView([lat,lon],10);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+      maxZoom:19,
+      attribution:"© OpenStreetMap"
+    }).addTo(map);
+  } else {
+    map.setView([lat,lon],10);
+  }
+
+  if(marker) marker.remove();
+
+  marker=L.marker([lat,lon])
+    .addTo(map)
+    .bindPopup("🌾 "+escapeHTML(label))
+    .openPopup();
+
+  setTimeout(()=>map.invalidateSize(),200);
+}
+
+function getMyLocation() {
+  if(!navigator.geolocation) {
+    alert("Geolocation is not supported.");
+    return;
+  }
+
+  if(!window.isSecureContext && location.protocol!=="file:") {
+    alert("Location access usually requires HTTPS.");
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    async pos=>{
+      farmLat=pos.coords.latitude;
+      farmLon=pos.coords.longitude;
+      $("location").value="My current farm location";
+      await refreshWeather();
+    },
+    err=>alert("Could not access location: "+err.message+". Enter your town manually."),
+    {enableHighAccuracy:true,timeout:12000}
+  );
+}
+
+function openMap() {
+  if(farmLat===null || farmLon===null) {
+    alert("Load a location first.");
+    return;
+  }
+
+  window.open(
+    "https://www.openstreetmap.org/?mlat="+farmLat+"&mlon="+farmLon+"#map=13/"+farmLat+"/"+farmLon,
+    "_blank"
+  );
+}
+
+function escapeHTML(s) {
+  return String(s).replace(/[&<>"']/g,ch=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#39;"
+  }[ch]));
+}
+
+function showSavedData() {
+  try {
+    const saved=JSON.parse(localStorage.getItem(STORE_KEY)||"null");
+
+    if(!saved) {
+      $("savedInfo").textContent="No saved forecast is available yet. Connect to the internet and load weather once.";
+      return;
+    }
+
+    weatherData=saved.data;
+    farmLat=saved.lat;
+    farmLon=saved.lon;
+
+    if(saved.profile) {
+      $("crop").value=saved.profile.crop||"rice";
+      $("stage").value=saved.profile.stage||"vegetative";
+      $("moisture").value=saved.profile.moisture||"";
+    }
+
+    $("location").value=saved.place.name||$("location").value;
+    $("placeTitle").textContent="🌾 "+saved.place.name+" (saved data)";
+    $("updated").textContent="Saved forecast from "+new Date(saved.savedAt).toLocaleString();
+
+    renderWeather(saved.data);
+    renderForecast(saved.data);
+    analyzeRisk(saved.data);
+    renderMap(saved.lat,saved.lon,saved.place.name);
+
+    $("savedInfo").textContent="Showing last saved forecast from "+new Date(saved.savedAt).toLocaleString()+". It may be outdated.";
+
+  } catch(e) {
+    $("savedInfo").textContent="Saved data could not be read.";
+  }
+}
+
+function speak(text) {
+  if(!("speechSynthesis" in window)) {
+    alert("Speech synthesis is not supported in this browser.");
+    return;
+  }
+
+  speechSynthesis.cancel();
+
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang=$("voiceLang").value;
+  u.rate=.9;
+
+  speechSynthesis.speak(u);
+}
+
+function speakAlerts() {
+  const tamil=$("voiceLang").value==="ta-IN";
+
+  const text=currentAlerts.map(a=>tamil?({
+    "Heavy rain watch":"கனமழை எச்சரிக்கை. வயலில் நீர் வெளியேறும் வழிகளைச் சரிபார்க்கவும்.",
+    "Heat stress warning":"அதிக வெப்ப எச்சரிக்கை. மண்ணின் ஈரப்பதத்தைச் சரிபார்த்து தேவைக்கேற்ப நீர்ப்பாசனம் செய்யவும்.",
+    "Strong wind warning":"பலத்த காற்று எச்சரிக்கை. பயிர்களுக்கு ஆதரவு கொடுத்து பாதுகாக்கவும்.",
+    "High humidity advisory":"அதிக ஈரப்பதம். பயிர்களில் நோய் அறிகுறிகள் உள்ளதா எனக் கண்காணிக்கவும்.",
+    "No major alert":"தற்போது முக்கிய வானிலை எச்சரிக்கை இல்லை."
+  }[a.title]||a.title+"."):(a.title+". "+a.text)).join(" ");
+
+  speak(text||"No alerts available.");
+}
+
+function stopSpeech() {
+  if("speechSynthesis" in window) speechSynthesis.cancel();
+}
+
+function speakLast() {
+  if(lastBotText) speak(lastBotText);
+}
+
+function addMessage(text,who) {
+  const el=document.createElement("div");
+  el.className="msg "+(who==="user"?"user":"bot");
+  el.textContent=text;
+  $("chatbox").appendChild(el);
+  $("chatbox").scrollTop=$("chatbox").scrollHeight;
+}
+
+function chatbotAnswer(q) {
+  const t=q.toLowerCase();
+  const crop=cropInfo[$("crop").value];
+  const c=weatherData?.current;
+  const d=weatherData?.daily;
+  let answer="";
+
+  if(!weatherData) {
+    return "Please load a weather forecast first. Then I can give advice using the current weather data.";
+  }
+
+  if(t.includes("irrigat") || t.includes("water")) {
+    const m=parseFloat($("moisture").value);
+    const rain=d.precipitation_sum[0]||0;
+
+    answer="Irrigation guidance for "+crop.name+": today's forecast rainfall is "+rain+" mm"
+      +(Number.isNaN(m)?" and no soil-moisture reading was entered.":", and entered soil moisture is "+m+"%.")
+      +". Check soil moisture at root depth and the crop stage before irrigating. Do not irrigate automatically based only on this forecast.";
+
+  } else if(t.includes("rain") || t.includes("flood")) {
+    answer="Rain outlook: today’s forecast is "+(d.precipitation_sum[0]||0)+" mm, with a "+(d.precipitation_probability_max[0]??0)+"% precipitation probability. "+crop.advice;
+
+  } else if(t.includes("heat") || t.includes("hot")) {
+    answer="The current temperature is "+c.temperature_2m+"°C. The next 3-day maximum is "+Math.max(...d.temperature_2m_max.slice(0,3))+"°C. Check crop water status, avoid unnecessary field work during peak heat, and follow local agricultural guidance.";
+
+  } else if(t.includes("risk") || t.includes("damage") || t.includes("disease")) {
+    answer="Your current screening risk is "+$("riskScore").textContent+" ("+$("riskLevel").textContent+"). "+$("riskSummary").textContent+" Weather can indicate favorable conditions but cannot diagnose a crop disease. Inspect plants for symptoms.";
+
+  } else if(t.includes("wind") || t.includes("spray")) {
+    answer="Forecast maximum wind in the next 3 days is "+Math.max(...d.wind_speed_10m_max.slice(0,3))+" km/h. Avoid pesticide spraying in strong or gusty winds and always follow the product label and local advisory.";
+
+  } else {
+    answer="For "+crop.name+" at the "+$("stage").value+" stage: "+crop.advice+" Current temperature is "+c.temperature_2m+"°C and humidity is "+c.relative_humidity_2m+"%. Ask me about rain, irrigation, heat, wind or crop risk for more focused guidance.";
+  }
+
+  return answer;
+}
+
+function sendChat() {
+  const q=$("chatInput").value.trim();
+
+  if(!q) return;
+
+  $("chatInput").value="";
+  addMessage(q,"user");
+
+  lastBotText=chatbotAnswer(q);
+  addMessage(lastBotText,"bot");
+}
+
+function quickQuestion(q) {
+  $("chatInput").value=q;
+  sendChat();
+}
+
+function exportReport() {
+  if(!weatherData) {
+    alert("Load weather data first.");
+    return;
+  }
+
+  const report={
+    generated:new Date().toISOString(),
+    location:$("placeTitle").textContent,
+    crop:$("crop").value,
+    stage:$("stage").value,
+    current:weatherData.current,
+    forecast:weatherData.daily,
+    riskScore:$("riskScore").textContent,
+    riskLevel:$("riskLevel").textContent,
+    damageCategory:$("damage").textContent,
+    alerts:currentAlerts,
+    disclaimer:"Educational screening only; not a validated crop-loss estimate or official warning."
+  };
+
+  const blob=new Blob([JSON.stringify(report,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+
+  a.href=url;
+  a.download="agroweather-farm-report.json";
+  a.click();
+
+  URL.revokeObjectURL(url);
+}
+
+loadProfile();
+
+try {
+  const old=JSON.parse(localStorage.getItem(STORE_KEY)||"null");
+  if(old && !navigator.onLine) showSavedData();
+} catch(e) {}
+
+if(navigator.onLine) refreshWeather();
+else showSavedData();
+
+</script>
+</body>
+</html>
